@@ -405,15 +405,16 @@ async function maybeAddSenderKeyDistributionMessage({
 
   const senderKeyInfo = conversation.get('senderKeyInfo');
   if (senderKeyInfo && senderKeyInfo.distributionId) {
-    const senderKeyDistributionMessage =
-      await window.textsecure.messaging.getSenderKeyDistributionMessage(
-        senderKeyInfo.distributionId
-      );
+    // 版本一致性更改
+    // const senderKeyDistributionMessage =
+    //   await window.textsecure.messaging.getSenderKeyDistributionMessage(
+    //     senderKeyInfo.distributionId
+    //   );
 
     return {
       contentProto: {
         ...contentProto,
-        senderKeyDistributionMessage: senderKeyDistributionMessage.serialize(),
+        // senderKeyDistributionMessage: senderKeyDistributionMessage.serialize(),
       },
       groupId: conversation.get('groupId'),
     };

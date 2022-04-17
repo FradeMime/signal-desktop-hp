@@ -913,7 +913,7 @@ export default class MessageSender {
       server: this.server,
       timestamp,
     });
-
+    log.info('获取auth公钥信息');
     recipients.forEach(identifier => {
       this.queueJobForIdentifier(identifier, async () =>
         outgoing.sendToIdentifier(identifier)
@@ -1941,10 +1941,11 @@ export default class MessageSender {
       `sendSenderKeyDistributionMessage: Sending ${distributionId} with timestamp ${timestamp}`
     );
 
-    const senderKeyDistributionMessage =
-      await this.getSenderKeyDistributionMessage(distributionId);
-    contentMessage.senderKeyDistributionMessage =
-      senderKeyDistributionMessage.serialize();
+    // 版本一致性更改
+    // const senderKeyDistributionMessage =
+    //   await this.getSenderKeyDistributionMessage(distributionId);
+    // contentMessage.senderKeyDistributionMessage =
+    //   senderKeyDistributionMessage.serialize();
 
     const sendLogCallback =
       identifiers.length > 1

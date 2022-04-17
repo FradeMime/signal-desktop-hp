@@ -23,6 +23,7 @@ export async function getKeysForIdentifier(
   accessKey?: string
 ): Promise<{ accessKeyFailed?: boolean }> {
   try {
+    log.info(`getKeysForId:${identifier}`);
     const { keys, accessKeyFailed } = await getServerKeys(
       identifier,
       server,

@@ -4,26 +4,28 @@
 /* eslint-disable no-bitwise */
 /* eslint-disable camelcase */
 
-import { isNumber, map } from 'lodash';
+// import { isNumber, map } from 'lodash';
+import { map } from 'lodash';
 import PQueue from 'p-queue';
 import { v4 as getGuid } from 'uuid';
 
-import type {
+import {
+  // CiphertextMessage,
   SealedSenderDecryptionResult,
   SenderCertificate,
   UnidentifiedSenderMessageContent,
 } from '@signalapp/signal-client';
 import {
-  DecryptionErrorMessage,
+  // DecryptionErrorMessage,
   groupDecrypt,
   PlaintextContent,
   PreKeySignalMessage,
-  processSenderKeyDistributionMessage,
+  // processSenderKeyDistributionMessage,
   ProtocolAddress,
   PublicKey,
   sealedSenderDecryptMessage,
   sealedSenderDecryptToUsmc,
-  SenderKeyDistributionMessage,
+  // SenderKeyDistributionMessage,
   signalDecrypt,
   signalDecryptPreKey,
   SignalMessage,
@@ -105,6 +107,7 @@ import {
   GroupSyncEvent,
 } from './messageReceiverEvents';
 import * as log from '../logging/log';
+// import { session } from 'electron';
 
 const GROUPV1_ID_LENGTH = 16;
 const GROUPV2_ID_LENGTH = 32;
@@ -278,40 +281,6 @@ export default class MessageReceiver
         });
       }
       log.info('handleRequest消息处理完成');
-
-      // log.info('伪造');
-      // // eslint-disable-next-line max-len
-      // eslint-disable-next-line max-len
-      // // body:source Address: +8615051220000.1,distination Address :+8615088888888.1,message: hello%2Cworld+++++
-
-      // const fake_job = async () => {
-      //   if (!request.body) {
-      //     throw new Error(
-      //       'MessageReceiver.handleRequest: request.body was falsey!'
-      //     );
-      //   }
-      //   const plaintext = request.body;
-      //   const envelope: ProcessedEnvelope = {
-      //     type: Proto.Envelope.Type.CIPHERTEXT,
-      //     source: '+8615088888888',
-      //     sourceUuid: '3bdabf91-ea32-410d-a48c-e21e245eecc8',
-      //     sourceDevice: 1,
-      //     timestamp: Date.now(),
-      //     content: plaintext,
-      //     id: '',
-      //     receivedAtCounter: 0,
-      //     receivedAtDate: 0,
-      //     messageAgeSec: 0,
-      //     destinationUuid: UUID.parse('7ab4a382-3924-4ffc-b977-d7e99200885d'),
-      //     serverGuid: '',
-      //     serverTimestamp: 0,
-      //   };
-      //   log.info(`拼接${envelope}`);
-      //   this.decryptAndCache(envelope, plaintext, request);
-      //   this.processedCount += 1;
-      // };
-
-      // this.incomingQueue.add(fake_job);
       // return;
     }
 
@@ -1202,6 +1171,7 @@ export default class MessageReceiver
     uuidKind: UUIDKind
   ): Promise<DecryptResult> {
     log.info('解密envelope');
+    log.info(`envelope:${envelope}`);
     const logId = this.getEnvelopeId(envelope);
 
     if (this.stoppingProcessing) {
@@ -1210,6 +1180,7 @@ export default class MessageReceiver
     }
 
     if (envelope.type === Proto.Envelope.Type.RECEIPT) {
+      log.info('envelope.type===RECEIPT');
       await this.onDeliveryReceipt(envelope);
       return { plaintext: undefined, envelope };
     }
@@ -1228,7 +1199,8 @@ export default class MessageReceiver
         'Contentless envelope should be handled by unsealEnvelope'
       );
     }
-
+    log.info(`ciphertext:${Buffer.from(ciphertext)}`);
+    // ciphertext数据没有问题，就是客户端发送过来的加密数据
     log.info(
       `MessageReceiver.decryptEnvelope(${logId})${isLegacy ? ' (legacy)' : ''}`
     );
@@ -1238,6 +1210,7 @@ export default class MessageReceiver
       ciphertext,
       uuidKind
     );
+    log.info(`plaintext:${plaintext}`);
 
     if (!plaintext) {
       log.warn('MessageReceiver.decryptEnvelope: plaintext was falsey');
@@ -1253,17 +1226,17 @@ export default class MessageReceiver
     //   sender key to decrypt the next message in the queue!
     try {
       const content = Proto.Content.decode(plaintext);
-
-      if (
-        content.senderKeyDistributionMessage &&
-        Bytes.isNotEmpty(content.senderKeyDistributionMessage)
-      ) {
-        await this.handleSenderKeyDistributionMessage(
-          stores,
-          envelope,
-          content.senderKeyDistributionMessage
-        );
-      }
+      log.info(`decrypeEnvelope:${content}`);
+      // if (
+      //   content.senderKeyDistributionMessage &&
+      //   Bytes.isNotEmpty(content.senderKeyDistributionMessage)
+      // ) {
+      //   await this.handleSenderKeyDistributionMessage(
+      //     stores,
+      //     envelope,
+      //     content.senderKeyDistributionMessage
+      //   );
+      // }
     } catch (error) {
       log.error(
         'MessageReceiver.decryptEnvelope: Failed to process sender ' +
@@ -1492,6 +1465,8 @@ export default class MessageReceiver
     ciphertext: Uint8Array,
     uuidKind: UUIDKind
   ): Promise<Uint8Array | undefined> {
+    log.info(`innerDecrype开始解密数据`);
+    log.info(`b64(ciphertxt):${Bytes.toBase64(ciphertext)}`);
     const { sessionStore, identityKeyStore, zone } = stores;
 
     const logId = this.getEnvelopeId(envelope);
@@ -1501,8 +1476,11 @@ export default class MessageReceiver
     const { sourceDevice } = envelope;
 
     const { destinationUuid } = envelope;
+    log.info(`destinationuuid:${destinationUuid}`);
     const preKeyStore = new PreKeys({ ourUuid: destinationUuid });
     const signedPreKeyStore = new SignedPreKeys({ ourUuid: destinationUuid });
+    log.info(`prekeystore${JSON.stringify(preKeyStore)}`);
+    log.info(`signedPreKeyStore${JSON.stringify(signedPreKeyStore)}`);
 
     strictAssert(identifier !== undefined, 'Empty identifier');
     strictAssert(sourceDevice !== undefined, 'Empty source device');
@@ -1516,7 +1494,7 @@ export default class MessageReceiver
       uuidKind === UUIDKind.PNI &&
       envelope.type !== envelopeTypeEnum.PREKEY_BUNDLE
     ) {
-      log.warn(
+      log.info(
         `MessageReceiver.innerDecrypt(${logId}): ` +
           'non-PreKey envelope on PNI'
       );
@@ -1527,7 +1505,7 @@ export default class MessageReceiver
       uuidKind === UUIDKind.PNI || uuidKind === UUIDKind.ACI,
       `Unsupported uuidKind: ${uuidKind}`
     );
-
+    log.info(`envelope.type:${envelope.type}`);
     if (envelope.type === envelopeTypeEnum.PLAINTEXT_CONTENT) {
       log.info(`decrypt/${logId}: plaintext message`);
       const buffer = Buffer.from(ciphertext);
@@ -1579,13 +1557,43 @@ export default class MessageReceiver
       const preKeySignalMessage = PreKeySignalMessage.deserialize(
         Buffer.from(ciphertext)
       );
+      const prekeyId = preKeySignalMessage.preKeyId();
+      const registerId = preKeySignalMessage.registrationId();
+      const signedprekeyid = preKeySignalMessage.signedPreKeyId();
+      const msgversion = preKeySignalMessage.version();
+      log.info(`preKeySignalMsg:${JSON.stringify(Bytes.toBase64(preKeySignalMessage.serialize()))}`);
+      log.info(`prekeyid:${prekeyId};signedprekeyid:${signedprekeyid};registerid:${registerId};msgversion:${msgversion}`);
+      // log.info(`preKeySignalMsg:${(CiphertextMessage.deserialize())}`);
+      log.info(
+        `解密所用:
+        address:${JSON.stringify(address)};
+        preKeySignalMessage:${JSON.stringify(preKeySignalMessage)};
+        sessionStore:${JSON.stringify(sessionStore)};
+        identityKeyStore:${JSON.stringify(identityKeyStore)};
+        preKeyStore:${JSON.stringify(preKeyStore)};
+        signedPreKeyStore:${JSON.stringify(signedPreKeyStore)};
+        identifier:${identifier};sourcedevice:${sourceDevice}
+        `
+      );
+      let sessionTemp = sessionStore.getSession(ProtocolAddress.new(identifier,sourceDevice));
+      log.info(`sessionTemp:${JSON.stringify(sessionTemp)}`);
+      
+      let idKeyId = identityKeyStore.getLocalRegistrationId();
+      let idKey = identityKeyStore._getIdentityKey();
+      log.info(`idKeyId:${JSON.stringify(idKeyId)};idkey:${JSON.stringify(idKey)}`);
+
+      let sprekey = preKeyStore.getPreKey;
+      log.info(`prekeystore.prekey:${sprekey}`);
+
+      let signprekey = signedPreKeyStore.getSignedPreKey;
+      log.info(`signedprekey.signprekey:${signprekey}`);
 
       const plaintext = await this.storage.protocol.enqueueSessionJob(
         address,
         async () =>
           this.unpad(
             await signalDecryptPreKey(
-              preKeySignalMessage,
+              preKeySignalMessage, // 未经过序列化的加密数据
               ProtocolAddress.new(identifier, sourceDevice),
               sessionStore,
               identityKeyStore,
@@ -1595,6 +1603,7 @@ export default class MessageReceiver
           ),
         zone
       );
+      log.info(`plaintext解密数据:${Buffer.from(plaintext)}`);
       return plaintext;
     }
     if (envelope.type === envelopeTypeEnum.UNIDENTIFIED_SENDER) {
@@ -1964,19 +1973,21 @@ export default class MessageReceiver
     incomingEnvelope: ProcessedEnvelope,
     plaintext: Uint8Array
   ): Promise<void> {
+    log.info('innerhandlecontentmsg');
     const content = Proto.Content.decode(plaintext);
     const envelope = await this.maybeUpdateTimestamp(incomingEnvelope);
 
-    if (
-      content.decryptionErrorMessage &&
-      Bytes.isNotEmpty(content.decryptionErrorMessage)
-    ) {
-      await this.handleDecryptionError(
-        envelope,
-        content.decryptionErrorMessage
-      );
-      return;
-    }
+    // 版本一致性修改
+    // if (
+    //   content.decryptionErrorMessage &&
+    //   Bytes.isNotEmpty(content.decryptionErrorMessage)
+    // ) {
+    //   await this.handleDecryptionError(
+    //     envelope,
+    //     content.decryptionErrorMessage
+    //   );
+    //   return;
+    // }
     if (content.syncMessage) {
       await this.handleSyncMessage(
         envelope,
@@ -2005,100 +2016,103 @@ export default class MessageReceiver
       await this.handleTypingMessage(envelope, content.typingMessage);
       return;
     }
-    if (content.storyMessage) {
-      const logId = this.getEnvelopeId(envelope);
-      log.info(
-        `innerHandleContentMessage/${logId}: Dropping incoming message with storyMessage field`
-      );
-      this.removeFromCache(envelope);
-      return;
-    }
+    // 版本一致性更改
+    // if (content.storyMessage) {
+    //   const logId = this.getEnvelopeId(envelope);
+    //   log.info(
+    //     `innerHandleContentMessage/${logId}: Dropping incoming message with storyMessage field`
+    //   );
+    //   this.removeFromCache(envelope);
+    //   return;
+    // }
 
     this.removeFromCache(envelope);
 
-    if (Bytes.isEmpty(content.senderKeyDistributionMessage)) {
-      throw new Error('Unsupported content message');
-    }
+    // 版本一致性更改
+    // if (Bytes.isEmpty(content.senderKeyDistributionMessage)) {
+    //   throw new Error('Unsupported content message');
+    // }
   }
+  // 版本一致性修改
+  // private async handleDecryptionError(
+  //   envelope: UnsealedEnvelope,
+  //   decryptionError: Uint8Array
+  // ) {
+  //   const logId = this.getEnvelopeId(envelope);
+  //   log.info(`handleDecryptionError: ${logId}`);
 
-  private async handleDecryptionError(
-    envelope: UnsealedEnvelope,
-    decryptionError: Uint8Array
-  ) {
-    const logId = this.getEnvelopeId(envelope);
-    log.info(`handleDecryptionError: ${logId}`);
+  //   const buffer = Buffer.from(decryptionError);
+  //   const request = DecryptionErrorMessage.deserialize(buffer);
 
-    const buffer = Buffer.from(decryptionError);
-    const request = DecryptionErrorMessage.deserialize(buffer);
+  //   const { sourceUuid, sourceDevice } = envelope;
+  //   if (!sourceUuid || !sourceDevice) {
+  //     log.error(`handleDecryptionError/${logId}: Missing uuid or device!`);
+  //     this.removeFromCache(envelope);
+  //     return;
+  //   }
 
-    const { sourceUuid, sourceDevice } = envelope;
-    if (!sourceUuid || !sourceDevice) {
-      log.error(`handleDecryptionError/${logId}: Missing uuid or device!`);
-      this.removeFromCache(envelope);
-      return;
-    }
+  //   const event = new RetryRequestEvent(
+  //     {
+  //       groupId: envelope.groupId,
+  //       requesterDevice: sourceDevice,
+  //       requesterUuid: sourceUuid,
+  //       ratchetKey: request.ratchetKey(),
+  //       senderDevice: request.deviceId(),
+  //       sentAt: request.timestamp(),
+  //     },
+  //     () => this.removeFromCache(envelope)
+  //   );
+  //   await this.dispatchEvent(event);
+  // }
 
-    const event = new RetryRequestEvent(
-      {
-        groupId: envelope.groupId,
-        requesterDevice: sourceDevice,
-        requesterUuid: sourceUuid,
-        ratchetKey: request.ratchetKey(),
-        senderDevice: request.deviceId(),
-        sentAt: request.timestamp(),
-      },
-      () => this.removeFromCache(envelope)
-    );
-    await this.dispatchEvent(event);
-  }
+  // 版本一致性修改
+  // private async handleSenderKeyDistributionMessage(
+  //   stores: LockedStores,
+  //   envelope: ProcessedEnvelope,
+  //   distributionMessage: Uint8Array
+  // ): Promise<void> {
+  //   const envelopeId = this.getEnvelopeId(envelope);
+  //   log.info(`handleSenderKeyDistributionMessage/${envelopeId}`);
 
-  private async handleSenderKeyDistributionMessage(
-    stores: LockedStores,
-    envelope: ProcessedEnvelope,
-    distributionMessage: Uint8Array
-  ): Promise<void> {
-    const envelopeId = this.getEnvelopeId(envelope);
-    log.info(`handleSenderKeyDistributionMessage/${envelopeId}`);
+  //   // Note: we don't call removeFromCache here because this message can be combined
+  //   //   with a dataMessage, for example. That processing will dictate cache removal.
 
-    // Note: we don't call removeFromCache here because this message can be combined
-    //   with a dataMessage, for example. That processing will dictate cache removal.
+  //   const identifier = envelope.sourceUuid;
+  //   const { sourceDevice } = envelope;
+  //   if (!identifier) {
+  //     throw new Error(
+  //       `handleSenderKeyDistributionMessage: No identifier for envelope ${envelopeId}`
+  //     );
+  //   }
+  //   if (!isNumber(sourceDevice)) {
+  //     throw new Error(
+  //       `handleSenderKeyDistributionMessage: Missing sourceDevice for envelope ${envelopeId}`
+  //     );
+  //   }
 
-    const identifier = envelope.sourceUuid;
-    const { sourceDevice } = envelope;
-    if (!identifier) {
-      throw new Error(
-        `handleSenderKeyDistributionMessage: No identifier for envelope ${envelopeId}`
-      );
-    }
-    if (!isNumber(sourceDevice)) {
-      throw new Error(
-        `handleSenderKeyDistributionMessage: Missing sourceDevice for envelope ${envelopeId}`
-      );
-    }
+  //   const sender = ProtocolAddress.new(identifier, sourceDevice);
+  //   const senderKeyDistributionMessage =
+  //     SenderKeyDistributionMessage.deserialize(
+  //       Buffer.from(distributionMessage)
+  //     );
+  //   const { destinationUuid } = envelope;
+  //   const senderKeyStore = new SenderKeys({ ourUuid: destinationUuid });
+  //   const address = new QualifiedAddress(
+  //     destinationUuid,
+  //     Address.create(identifier, sourceDevice)
+  //   );
 
-    const sender = ProtocolAddress.new(identifier, sourceDevice);
-    const senderKeyDistributionMessage =
-      SenderKeyDistributionMessage.deserialize(
-        Buffer.from(distributionMessage)
-      );
-    const { destinationUuid } = envelope;
-    const senderKeyStore = new SenderKeys({ ourUuid: destinationUuid });
-    const address = new QualifiedAddress(
-      destinationUuid,
-      Address.create(identifier, sourceDevice)
-    );
-
-    await this.storage.protocol.enqueueSenderKeyJob(
-      address,
-      () =>
-        processSenderKeyDistributionMessage(
-          sender,
-          senderKeyDistributionMessage,
-          senderKeyStore
-        ),
-      stores.zone
-    );
-  }
+  //   await this.storage.protocol.enqueueSenderKeyJob(
+  //     address,
+  //     () =>
+  //       processSenderKeyDistributionMessage(
+  //         sender,
+  //         senderKeyDistributionMessage,
+  //         senderKeyStore
+  //       ),
+  //     stores.zone
+  //   );
+  // }
 
   private async handleCallingMessage(
     envelope: ProcessedEnvelope,
@@ -2115,6 +2129,11 @@ export default class MessageReceiver
     envelope: ProcessedEnvelope,
     receiptMessage: Proto.IReceiptMessage
   ): Promise<void> {
+    log.info(
+      `handleReceiptMsg:receiptMsg:
+      ${JSON.stringify(receiptMessage)};
+      envelope:${JSON.stringify(envelope)}`
+    );
     strictAssert(receiptMessage.timestamp, 'Receipt message without timestamp');
 
     let EventClass: typeof DeliveryEvent | typeof ReadEvent | typeof ViewEvent;

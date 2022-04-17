@@ -15,6 +15,7 @@ import { calculateAgreement, createKeyPair, generateKeyPair } from '../Curve';
 import { SignalService as Proto } from '../protobuf';
 import { strictAssert } from '../util/assert';
 import { normalizeUuid } from '../util/normalizeUuid';
+import * as log from '../logging/log';
 
 type ProvisionDecryptResult = {
   identityKeyPair: KeyPairType;
@@ -32,6 +33,7 @@ class ProvisioningCipherInner {
   async decrypt(
     provisionEnvelope: Proto.ProvisionEnvelope
   ): Promise<ProvisionDecryptResult> {
+    log.info('provisioning cipher decrypt');
     strictAssert(
       provisionEnvelope.publicKey && provisionEnvelope.body,
       'Missing required fields in ProvisionEnvelope'
@@ -98,8 +100,9 @@ class ProvisioningCipherInner {
 
 export default class ProvisioningCipher {
   constructor() {
+    log.info('ProvisioningCIpher构造函数');
     const inner = new ProvisioningCipherInner();
-
+    
     this.decrypt = inner.decrypt.bind(inner);
     this.getPublicKey = inner.getPublicKey.bind(inner);
   }

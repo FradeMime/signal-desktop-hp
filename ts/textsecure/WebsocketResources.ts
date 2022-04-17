@@ -196,6 +196,8 @@ export default class WebSocketResource extends EventTarget {
     this.outgoingId = Math.max(1, (this.outgoingId + 1) & 0x7fffffff);
     log.info(`sendRequest id:${id};outgoingId:${this.outgoingId}`);
     log.info(`sendRequest options:${JSON.stringify(options)}`);
+    if(options.body)
+      log.info(`http.body的base64:${Bytes.toBase64(options.body)}`);
     const bytes = Proto.WebSocketMessage.encode({
       type: Proto.WebSocketMessage.Type.REQUEST,
       request: {
@@ -233,8 +235,9 @@ export default class WebSocketResource extends EventTarget {
       });
     });
     // eslint-disable-next-line camelcase
-    // const log_str = new TextDecoder().decode(bytes);
+    const log_str = new TextDecoder().decode(bytes);
     // eslint-disable-next-line camelcase
+    log.info(`ws发送数据包str:${log_str}`);
     log.info(`ws发送数据包:${Bytes.toBase64(bytes)}`);
     log.info(`ws发送数据包:${bytes}`);
     // this.socket.sendBytes(Buffer.from(Bytes.toBase64(bytes)));

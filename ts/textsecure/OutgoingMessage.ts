@@ -95,6 +95,7 @@ function getPaddedMessageLength(messageLength: number): number {
 }
 
 export function padMessage(messageBuffer: Uint8Array): Uint8Array {
+  log.info(`padMessage:msgbuf:${messageBuffer}`);
   const plaintext = new Uint8Array(
     getPaddedMessageLength(messageBuffer.byteLength + 1) - 1
   );
@@ -328,9 +329,10 @@ export default class OutgoingMessage {
   }
 
   getPlaintext(): Uint8Array {
+    log.info('getPlaintext函数内');
     if (!this.plaintext) {
       const { message } = this;
-
+      log.info(`message:${JSON.stringify(message)}`);
       if (message instanceof Proto.Content) {
         this.plaintext = padMessage(Proto.Content.encode(message).finish());
       } else {
@@ -357,9 +359,11 @@ export default class OutgoingMessage {
     protocolAddress: ProtocolAddress;
     sessionStore: Sessions;
   }): Promise<CiphertextMessage> {
+    // log.info(`getCiphertextMessage:plaintext:${Buffer.from(this.getPlaintext())}`);
     const { message } = this;
 
     if (message instanceof Proto.Content) {
+      log.info(`message:${JSON.stringify(message)};ProtoContent`);
       return signalEncrypt(
         Buffer.from(this.getPlaintext()),
         protocolAddress,
@@ -367,7 +371,7 @@ export default class OutgoingMessage {
         identityKeyStore
       );
     }
-
+    log.info('asCipherTextMsg');
     return message.asCiphertextMessage();
   }
 
@@ -438,6 +442,7 @@ export default class OutgoingMessage {
             const destinationRegistrationId =
               activeSession.remoteRegistrationId();
 
+            log.info(`doSendMessage消息加密:sealedSender${sealedSender};senderCertificate:${senderCertificate}`);
             if (sealedSender && senderCertificate) {
               const ciphertextMessage = await this.getCiphertextMessage({
                 identityKeyStore,
@@ -496,6 +501,7 @@ export default class OutgoingMessage {
     )
       .then(async (jsonData: Array<MessageType>) => {
         if (sealedSender) {
+          log.info('')
           return this.transmitMessage(identifier, jsonData, this.timestamp, {
             accessKey,
           }).then(
@@ -659,6 +665,7 @@ export default class OutgoingMessage {
   }
 
   async sendToIdentifier(providedIdentifier: string): Promise<void> {
+    log.info(`sendtoId:providedidentifier:${providedIdentifier}`);
     let identifier = providedIdentifier;
     try {
       if (isValidUuid(identifier)) {
@@ -708,6 +715,8 @@ export default class OutgoingMessage {
         ourUuid,
         identifier,
       });
+      // 这里会调用获取对方公钥信息 v2/keys
+      log.info(`outgoingmsg.sendtoid:deviceid判断：${deviceIds.length}`);
       if (deviceIds.length === 0) {
         await this.getKeysForIdentifier(identifier);
       }

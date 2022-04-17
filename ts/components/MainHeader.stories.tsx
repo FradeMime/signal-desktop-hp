@@ -65,7 +65,7 @@ story.add('Name', () => {
 story.add('Phone Number', () => {
   const props = createProps({
     name: 'John Smith',
-    phoneNumber: '+15553004000',
+    phoneNumber: '+99999999999',
   });
 
   return <MainHeader {...props} />;

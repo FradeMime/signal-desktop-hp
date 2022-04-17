@@ -29,6 +29,7 @@ import { QualifiedAddress } from './types/QualifiedAddress';
 import type { UUID } from './types/UUID';
 
 import type { Zone } from './util/Zone';
+import * as log from './logging/log';
 
 function encodeAddress(address: ProtocolAddress): Address {
   const name = address.name();
@@ -77,7 +78,7 @@ export class Sessions extends SessionStore {
       encodedAddress,
       { zone: this.zone }
     );
-
+    log.info(`获取会话:sessionRecord:${JSON.stringify(record)}`);
     return record || null;
   }
 
@@ -279,6 +280,7 @@ export class SignedPreKeys extends SignedPreKeyStore {
   }
 
   async getSignedPreKey(id: number): Promise<SignedPreKeyRecord> {
+    log.info(`getSignedPrekey:${id}`);
     const signedPreKey =
       await window.textsecure.storage.protocol.loadSignedPreKey(
         this.ourUuid,

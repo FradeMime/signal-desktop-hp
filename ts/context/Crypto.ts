@@ -8,6 +8,7 @@ import crypto from 'crypto';
 import { strictAssert } from '../util/assert';
 import type { HashType } from '../types/Crypto';
 import { CipherType } from '../types/Crypto';
+import * as log from '../logging/log';
 
 const AUTH_TAG_SIZE = 16;
 
@@ -82,6 +83,7 @@ export class Crypto {
       aad?: Uint8Array;
     }>
   ): Uint8Array {
+    log.info('context decrypt');
     let decipher: Decipher;
     let input = Buffer.from(ciphertext);
     if (cipherType === CipherType.AES256GCM) {

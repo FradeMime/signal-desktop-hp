@@ -342,8 +342,10 @@ async function _promiseAjax(
 
   const { accessKey, basicAuth, unauthenticated } = options;
   if (basicAuth) {
+    log.info('basicAuth--');
     fetchOptions.headers.Authorization = `Basic ${basicAuth}`;
   } else if (unauthenticated) {
+    log.info('unauthenticated--accessKey');
     if (accessKey) {
       // Access key is already a Base64 string
       fetchOptions.headers['Unidentified-Access-Key'] = accessKey;
@@ -356,7 +358,7 @@ async function _promiseAjax(
     if (
       options.path === 'v2/keys?identity=aci' ||
       options.path === 'v2/keys?identity=pni' ||
-      options.path === 'v2/keys/a8e287f9-e13a-4c71-beda-15785d3b2720/*'
+      options.path === 'v2/keys/2257745c-a4be-4996-a5df-cd9a880a894a/*'
     ) {
       const auth = Bytes.toBase64(
         Bytes.fromString(`${options.user}.1:${options.password}`)
@@ -365,7 +367,7 @@ async function _promiseAjax(
       log.info('秘钥上传/获取秘钥');
     } else if (
       options.path === 'v1/certificate/delivery' ||
-      options.path === 'v1/messages/a8e287f9-e13a-4c71-beda-15785d3b2720'
+      options.path === 'v1/messages/2257745c-a4be-4996-a5df-cd9a880a894a'
     ) {
       const auth = Bytes.toBase64(
         Bytes.fromString(`${options.user}:${options.password}`)
@@ -660,6 +662,7 @@ export type MessageType = Readonly<{
   destinationDeviceId: number;
   destinationRegistrationId: number;
   content: string;
+  // body 4-12 加
 }>;
 
 type AjaxOptionsType = {
@@ -1400,14 +1403,42 @@ export function initialize({
       );
     }
 
-    async function getSenderCertificate(omitE164?: boolean) {
-      return (await _ajax({
-        call: 'deliveryCert',
-        httpType: 'GET',
-        responseType: 'json',
-        validateResponse: { certificate: 'string' },
-        ...(omitE164 ? { urlParameters: '?includeE164=false' } : {}),
-      })) as GetSenderCertificateResultType;
+    async function getSenderCertificate(_omitE164?: boolean) {
+      log.info(`获取自身证书`);
+      // return (await _ajax({
+      //   call: 'deliveryCert',
+      //   httpType: 'GET',
+      //   responseType: 'json',
+      //   validateResponse: { certificate: 'string' },
+      //   ...(omitE164 ? { urlParameters: '?includeE164=false' } : {}),
+      // })) as GetSenderCertificateResultType;
+
+      const options = {
+        hostname: '124.232.156.201',
+        port: 28810,
+        path: '/v1/certificate/delivery?includeE164=false',
+        method: 'GET',
+        headers: {
+          Authorization: 'Basic ZDU2ZDI0MGUtNGE3ZC00NzlmLTgwMzEtYjM3MTQ5ZDVmZWY1LjE6di9MMTQwc05ITzJxNDkrdVBRdlNJQQ==',
+        }
+      };
+      let retData: string = '';
+      var http = require('http');
+      var req = http.request(options, function (res: { statusCode: string; headers: any; setEncoding: (arg0: string) => void; on: (arg0: string, arg1: (chunk: Readonly<{ certificate: string; }>) => void) => void; }) {
+        log.info('STATUS: ' + res.statusCode);
+        log.info('HEADERS: ' + JSON.stringify(res.headers));
+        res.setEncoding('utf8');
+        res.on('data', function (chunk: GetSenderCertificateResultType) {
+          log.info('BODY: ' + chunk);
+          retData = chunk.certificate;
+        });
+      });
+      req.on('error', function (e: { message: string; }) {
+        console.log('problem with request: ' + e.message);
+      });
+      req.end();
+      let retCer: GetSenderCertificateResultType = {certificate: retData}
+      return retCer;
     }
 
     async function getStorageCredentials(): Promise<StorageServiceCredentials> {
@@ -2038,6 +2069,7 @@ export function initialize({
     }
 
     async function getKeysForIdentifier(identifier: string, deviceId?: number) {
+      log.info(`获取对方公钥信息identity:${identifier}`);
       const keys = (await _ajax({
         call: 'keys',
         httpType: 'GET',
@@ -2053,6 +2085,7 @@ export function initialize({
       deviceId?: number,
       { accessKey }: { accessKey?: string } = {}
     ) {
+      log.info(`unauth获取公钥信息:identity:${identifier}`);
       const keys = (await _ajax({
         call: 'keys',
         httpType: 'GET',
@@ -2329,7 +2362,7 @@ export function initialize({
         type: 'GET',
         redactUrl: _createRedactor(cdnKey),
         version,
-        abortSignal: abortController.signal,
+        // abortSignal: abortController.signal,
       });
 
       return getStreamWithTimeout(stream, {

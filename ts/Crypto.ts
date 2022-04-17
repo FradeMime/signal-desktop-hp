@@ -184,6 +184,7 @@ export function encryptSymmetric(
   key: Uint8Array,
   plaintext: Uint8Array
 ): Uint8Array {
+  log.info('crypto encryptsymmetric');
   const iv = getZeroes(IV_LENGTH);
   const nonce = getRandomBytes(NONCE_LENGTH);
 
@@ -200,6 +201,7 @@ export function decryptSymmetric(
   key: Uint8Array,
   data: Uint8Array
 ): Uint8Array {
+  log.info('crypto decryptsymmetric');
   const iv = getZeroes(IV_LENGTH);
 
   const nonce = getFirstBytes(data, NONCE_LENGTH);
@@ -245,6 +247,7 @@ export function verifyHmacSha256(
   }
   let result = 0;
 
+  log.info(`ourMac:${Buffer.from(ourMac)};theirMac:${Buffer.from(theirMac)}`);
   for (let i = 0; i < theirMac.byteLength; i += 1) {
     // eslint-disable-next-line no-bitwise
     result |= ourMac[i] ^ theirMac[i];
@@ -523,6 +526,7 @@ export function decryptAttachment(
   keys: Uint8Array,
   theirDigest?: Uint8Array
 ): Uint8Array {
+  log.info('crypto decrypeAttachment');
   if (keys.byteLength !== 64) {
     throw new Error('Got invalid length attachment keys');
   }

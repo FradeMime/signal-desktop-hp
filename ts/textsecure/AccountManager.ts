@@ -333,6 +333,7 @@ export default class AccountManager extends EventTarget {
   }
 
   async rotateSignedPreKey(uuidKind: UUIDKind) {
+    log.info('rotatesignedprekeys');
     return this.queueTask(async () => {
       const ourUuid = window.textsecure.storage.user.getCheckedUuid(uuidKind);
       const signedKeyId = window.textsecure.storage.get('signedKeyId', 1);
@@ -452,6 +453,7 @@ export default class AccountManager extends EventTarget {
   }
 
   async cleanSignedPreKeys() {
+    log.info('cleansignedprekeys');
     const ourUuid = window.textsecure.storage.user.getCheckedUuid();
     const store = window.textsecure.storage.protocol;
 
